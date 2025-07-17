@@ -1,0 +1,120 @@
+#Run these commands from your terminal inside flowbit-demo
+# 1. Initialize repo
+git init
+echo "node_modules/\n.env\n*.log\n" > .gitignore
+
+# 2. Seed initial files
+echo '{}' > registry.json
+cat <<EOF > README.md
+# Flowbit Demo
+...start instructions...
+EOF
+
+# 3. Seed tenants script
+cat <<'EOF' > seed.js
+// connects to MongoDB, creates tenants LogisticsCo and RetailGmbH
+EOF
+
+# 4. Initial commit
+git add .
+git commit -m "Initial monorepo structure with services"
+
+# 5. Add remote and push
+git remote add origin https://github.com/youruser/flowbit-demo.git
+git push -u origin main
+auth-api/src/index.js
+js
+Copy
+Edit
+const express = require('express');
+const mongoose = require('mongoose');
+const authRoutes = require('./routes/auth');
+const ticketRoutes = require('./routes/tickets');
+const screensRoutes = require('./routes/screens');
+const { authMiddleware } = require('./middleware/auth');
+
+const app = express();
+app.use(express.json());
+app.use('/auth', authRoutes);
+app.use(authMiddleware);
+app.use('/api/tickets', ticketRoutes);
+app.use('/me/screens', screensRoutes);
+app.post('/webhook/ticket-done', require('./routes/webhook'));
+
+mongoose.connect(process.env.MONGO_URI).then(() => {
+  app.listen(4000, () => console.log('Auth API running on 4000'));
+});
+#Docker Compose Overview
+yaml
+Copy
+Edit
+version: '3.8'
+services:
+  mongo: image: mongo:6
+  auth-api:
+    build: ./auth-api
+    env_file: .env
+    depends_on: [mongo]
+  react-shell:
+    build: ./react-shell
+    ports: ["3000:3000"]
+  support-app:
+    build: ./support-app
+    ports: ["3001:3001"]
+  n8n:
+    image: n8nio/n8n:latest
+    ports: ["5678:5678"]
+  ngrok:
+    image: wernight/ngrok
+    command: ngrok http auth-api:4000
+    env_file: .env
+    ports: ["4040:4040"]
+#Run with Docker Compose:
+docker-compose up --build
+#n8n Integration
+Update the template’s docker-compose.yml:
+
+yaml
+Copy
+Edit
+n8n:
+  image: n8nio/n8n:latest
+  ports:
+    - "5678:5678"
+  environment:
+    - N8N_BASIC_AUTH_ACTIVE=true
+#Docker Compose Configuration
+#Use the existing template's docker-compose.yml and extend:
+
+yaml
+Copy
+Edit
+services:
+  mongo:
+    image: mongo:6
+    volumes:
+      - mongo_data:/data/db
+
+  auth-api:
+    build: ./services/auth-api
+    env_file: .env
+    depends_on: [mongo]
+
+  shell:
+    build: ./packages/shell
+    ports:
+      - "5000:5000"
+
+  support-app:
+    build: ./packages/app1
+    ports:
+      - "5001:5001"
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    # add config here
+
+volumes:
+  mongo_data:
